@@ -34,7 +34,7 @@ module testbench;
       .bcd(bcd)
   );
 
-  ShiftRegisterBidirectional20 shift_reg20 (
+  ShiftRegisterBidirectional shift_reg20 (
       .clk (clk),
       .num (bcd),
       .load(load),
