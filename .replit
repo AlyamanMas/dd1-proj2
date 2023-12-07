@@ -1,0 +1,14 @@
+run = ["sh", "run.sh"]
+entrypoint = "testbench.v"
+hidden = ["run.sh", "build"]
+
+[nix]
+channel = "stable-23_05"
+
+[languages]
+
+[languages.verilog]
+pattern = "**/{*.v}"
+
+[languages.verilog.languageServer]
+start = "verible-verilog-ls"
