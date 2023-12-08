@@ -52,6 +52,21 @@ module SeqMult #(
   assign zflag = multiplier_reg == 0;
   assign b0 = multiplier_reg[0];
 
+  MultControlUnit cu (
+      .clk(clk),
+      .rst(rst),
+      .b0(b0),
+      .zflag(zflag),
+      .start(start),
+      .sel_prod(sel_prod),
+      .load_a(load_a),
+      .load_b(load_b),
+      .load_prod(load_prod),
+      .en_a(en_a),
+      .en_b(en_b),
+      .done(done)
+  );
+
   always @(posedge clk or posedge rst) begin
     if (rst) begin
       multiplicand_reg <= 0;
@@ -88,7 +103,7 @@ module MultControlUnit (
     en_b,
     done
 );
-  reg [1:0] state, next_state;
+  reg [1:0] state = 1, next_state;
   localparam [1:0] S1 = 1, S2 = 2, S3 = 3;
 
   // state change based on previous states and input
@@ -108,8 +123,10 @@ module MultControlUnit (
       end
       default: begin
         next_state = S1;
-        $display(
-            "WARNING: Reached default state in CU. This is not supposed to happen.");  // for debugging
+        // strings are concatednated to allow the string to be split
+        // over multiple lines for readability
+        $display({"WARNING: Reached default state in CU.", "This is not supposed to happen.",
+                  "State: %d. Next State: %d."}, state, next_state);  // for debugging
       end
     endcase
   end

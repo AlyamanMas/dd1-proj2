@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-`include "./adder.v"
 
 // This is the top-level module for an initial implementation of the
 // project on the FPGA for testing. It uses a normal behavioral

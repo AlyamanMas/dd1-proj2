@@ -2,8 +2,8 @@
 
 module testbench;
   reg [7:0] num1, num2;
-  reg clk, load, dir, en;
-  wire is_negative1, is_negative2;
+  reg clk, load, dir, en, rst, start;
+  wire is_negative1, is_negative2, done;
   wire [7:0] num_positive1, num_positive2;
   wire [15:0] bin;
   wire [19:0] bcd, shifted_bcd;
@@ -20,13 +20,23 @@ module testbench;
       .num_positive(num_positive2)
   );
 
-  Multiplier #(8) mul_inst (
+  //Multiplier #(8) mul_inst (
+  //    .multiplier(num_positive1),
+  //    .multiplicand(num_positive2),
+  //    .rst(1'b0),
+  //    .start(1'b1),
+  //    .product(bin),
+  //    .done()
+  //);
+
+  SeqMult seq_mult (
+      .rst(rst),
+      .clk(clk),
+      .start(start),
       .multiplier(num_positive1),
       .multiplicand(num_positive2),
-      .rst(1'b0),
-      .start(1'b1),
       .product(bin),
-      .done()
+      .done(done)
   );
 
   DoubleDabble dd_inst (
@@ -46,26 +56,30 @@ module testbench;
   always #10 clk = ~clk;
 
   initial begin
-    clk  = 0;
-    en   = 0;
+    clk = 0;
+    rst = 1;
+    start = 0;
+    en = 0;
     load = 0;
-    dir  = 0;
+    dir = 0;
     num1 = -5;
     num2 = 10;
     #10;
+    rst   = 0;
+    start = 1;
     $display("is_negative1: %b, num_positive1: %d", is_negative1, num_positive1);
     $display("is_negative2: %b, num_positive2: %d", is_negative2, num_positive2);
 
-    #10;
+    #100;
     $display("Binary product: %b", bin);
     $display("Binary product: %d", bin);
 
-    #10;
+    #30;
     $display("BCD output: %b", bcd);
     $display("BCD output: %h", bcd);
     load = 1;
 
-    #10;
+    #30;
     $display("BCD Shifted: %h", shifted_bcd);
     load = 0;
     en   = 1;
