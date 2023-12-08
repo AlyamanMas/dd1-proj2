@@ -198,3 +198,255 @@ module ShiftRegisterBidirectional #(
     end
   end
 endmodule  // end ShiftRegisterBidirectional
+
+
+module RisingEdge (
+    input  clk,
+    rst,
+    w,
+    output z
+);
+  reg [1:0] state, nextState;
+  parameter [1:0] A = 2'b00, B = 2'b01, C = 2'b10;  // States Encoding
+  // Next state generation (combinational logic)
+  always @(w or state)
+    case (state)
+      A:
+      if (w == 0) nextState = A;
+      else nextState = B;
+      B:
+      if (w == 0) nextState = A;
+      else nextState = C;
+      C:
+      if (w == 0) nextState = A;
+      else nextState = C;
+      default: nextState = A;
+    endcase
+  // State register
+  // Update state FF's with the triggering edge of the clock
+  always @(posedge clk or posedge rst) begin
+    if (rst) state <= A;
+    else state <= nextState;
+  end
+  // output generation (combinational logic)
+  assign z = (state == B && rst == 0);
+endmodule  // end RisingEdge
+
+
+module Debouncer (
+    input  clk,
+    rst,
+    in,
+    output out
+);
+  reg q1, q2, q3;
+  always @(posedge clk, posedge rst) begin
+    if (rst == 1'b1) begin
+      q1 <= 0;
+      q2 <= 0;
+      q3 <= 0;
+    end else begin
+      q1 <= in;
+      q2 <= q1;
+      q3 <= q2;
+    end
+  end
+  assign out = (rst) ? 0 : q1 & q2 & q3;
+endmodule  // end Debouncer
+
+
+module Synchronizer (
+    input  clk,
+    rst,
+    in,
+    output out
+);
+  reg q1, q2;
+  always @(posedge clk, posedge rst) begin
+    if (rst == 1'b1) begin
+      q1 <= 0;
+      q2 <= 0;
+    end else begin
+      q1 <= in;
+      q2 <= q1;
+    end
+  end
+  assign out = q2;
+endmodule  // end Synchronizer
+
+
+module Counter #(
+    parameter width = 4,
+    max_number = 6
+) (
+    input clk,
+    reset,
+    en,
+    output reg [width-1:0] count
+);
+
+  always @(posedge clk, posedge reset) begin
+    if (reset == 1) count <= 0;
+    else if (en == 1) begin
+      if (count == max_number - 1) count <= 0;
+      else count <= count + 1;
+    end
+  end
+endmodule  // end Counter
+
+
+module ClockDivider #(
+    parameter n = 50_000_000
+) (
+    input clk,
+    rst,
+    output reg clk_out
+);
+  wire [31:0] count;
+  // Big enough to hold the maximum possible value
+  // Increment count
+  Counter #(32, n) counterMod (
+      .clk(clk),
+      .en(1'b1),
+      .reset(rst),
+      .count(count)
+  );
+  // Handle the output clock
+  always @(posedge clk, posedge rst) begin
+    if (rst)  // Asynchronous Reset
+      clk_out <= 0;
+    else if (count == n - 1) clk_out <= ~clk_out;
+  end
+endmodule  // end ClockDivider
+
+
+// NOTE: this is taken from a lab report submission for lab 5.
+// It has been modified to replace hexadecimal entries with
+// a positive or negative sign.
+module SevenSegDecWithEn (
+    input en,
+    input [1:0] sel,
+    input [3:0] x,
+    output reg [6:0] segments,
+    output reg [3:0] anode_active
+);
+  always @(sel) begin
+    if (en)
+      case (sel)
+        0: anode_active = 4'b1110;
+        1: anode_active = 4'b1101;
+        2: anode_active = 4'b1011;
+        3: anode_active = 4'b0111;
+      endcase
+    else anode_active = 4'b1111;  // if !en, disable all digits
+  end
+
+  always @(x) begin
+    case (x)
+      0: segments = 7'b0000001;
+      1: segments = 7'b1001111;
+      2: segments = 7'b0010010;
+      3: segments = 7'b0000110;
+      4: segments = 7'b1001100;
+      5: segments = 7'b0100100;
+      6: segments = 7'b0100000;
+      7: segments = 7'b0001111;
+      8: segments = 7'b0000000;
+      9: segments = 7'b0000100;
+      // this is reserved for a negative sign
+      10: segments = 7'b1111110;
+      // this is reserved for a positive sign
+      11: segments = 7'b1111111;
+      default: segments = 7'b1111111;
+    endcase
+  end
+endmodule  // end SevenSegDecWithEn
+
+
+module Display3DigitsSign (
+    input clk,
+    rst,
+    en,
+    input negative_sign,
+    input [3:0] dig2,
+    dig1,
+    dig0,
+    output [6:0] segments,
+    output [3:0] anodes
+);
+  wire clk_out;
+  wire [1:0] selector;
+  reg [3:0] current_digit;
+
+  ClockDivider #(250_000) clk_div (
+      .clk(clk),
+      .rst(1'b0),
+      .clk_out(clk_out)
+  );
+
+  Counter #(2, 4) sel (
+      .clk(clk_out),
+      .reset(rst),
+      .en(1'b0),
+      .count(selector)
+  );
+
+  // TODO: maybe change this to clk and see if anything changes
+  always @(*) begin
+    case (selector)
+      2'b00: current_digit <= dig0;
+      2'b01: current_digit <= dig1;
+      2'b10: current_digit <= dig2;
+      2'b11: current_digit <= negative_sign ? 10 : 11;
+    endcase
+  end
+
+  SevenSegDecWithEn display (
+      .en(en),
+      .sel(selector),
+      .x(current_digit),
+      .segments(segments),
+      .anode_active(anodes)
+  );
+endmodule  // end Display3DigitsSign
+
+
+// clk must have ClockDivider with 500_000
+module PushButtonDetector (
+    input  a,
+    clk,
+    rst,
+    output x
+);
+  wire b, c;
+  //ClockDivider #(500_000) clkdiv (
+  //    .clk(clk),
+  //    .rst(rst),
+  //    .clk_out(clk_out)
+  //);
+  Debouncer debounc (
+      .clk(clk),
+      .rst(rst),
+      .in (a),
+      .out(b)
+  );
+  Synchronizer synch (
+      .clk(clk),
+      .rst(rst),
+      .in (b),
+      .out(c)
+  );
+  RisingEdge rise_edg (
+      .clk(clk),
+      .rst(rst),
+      .w  (c),
+      .z  (x)
+  );
+endmodule
+
+// Note to self:
+// rst can be rising edge button since I believe it only needs
+// one iteration to run
+// start can also be rising edge where we actually use a start
+// regsiter that becomes = 1 when the start button is pressed
+// and it is equal to 0 when the rst button is pressed
