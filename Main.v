@@ -1,23 +1,24 @@
 `timescale 1ns / 1ps
 
 module Main (
-    input [7:0] num1,
-    num2,
     input clk,
-    start_btn,
-    rst_btn,
     shift_right_btn,
     shift_left_btn,
+    start_btn,
+    rst_btn,
+    input [7:0] num1,
+    num2,
     output [6:0] segments,
     output [3:0] anodes,
-    output done,
-    sh_right_led,
+    output sh_right_led,
     sh_left_led,
     rst_led,
     start_led,
     load,
     dir,
-    en
+    en,
+    start_posedge_led,
+    done
 );
   wire is_negative1, is_negative2;
   wire [7:0] num_positive1, num_positive2;
@@ -25,8 +26,8 @@ module Main (
   wire [19:0] bcd, shifted_bcd_int;
 
   wire sh_right_posedge, sh_left_posedge, rst_posedge, start_posedge;
-  wire pb_clk;
-  reg  start;
+  wire clk_shr;
+  reg  start = 0;
 
   //wire load, dir, en;
 
@@ -34,35 +35,30 @@ module Main (
   assign sh_left_led = sh_left_posedge;
   assign rst_led = rst_posedge;
   assign start_led = start;
-
-  ClockDivider #(500_000) pb_clockdiv (
-      .clk(clk),
-      .rst(rst_btn),
-      .clk_out(pb_clk)
-  );
+  assign start_posedge_led = start_posedge;
 
   PushButtonDetector rst_detector (
-      .clk(pb_clk),
-      .rst(rst_btn),
+      .clk(clk),
+      .rst(1'b0),
       .a  (rst_btn),
       .x  (rst_posedge)
   );
   PushButtonDetector start_detector (
-      .clk(pb_clk),
-      .rst(rst_posedge),
+      .clk(clk),
+      .rst(1'b0),
       .a  (start_btn),
       .x  (start_posedge)
   );
 
   PushButtonDetector sh_right_detector (
-      .clk(pb_clk),
-      .rst(rst_posedge),
+      .clk(clk),
+      .rst(1'b0),
       .a  (shift_right_btn),
       .x  (sh_right_posedge)
   );
   PushButtonDetector sh_left_detector (
-      .clk(pb_clk),
-      .rst(rst_posedge),
+      .clk(clk),
+      .rst(1'b0),
       .a  (shift_left_btn),
       .x  (sh_left_posedge)
   );
@@ -97,7 +93,7 @@ module Main (
   // to `load`.
   PushButtonDetector load_driver (
       .clk(clk),
-      .rst(rst_posedge),
+      .rst(1'b0),
       .a  (done),
       .x  (load)
   );
@@ -109,8 +105,13 @@ module Main (
 
   assign en  = sh_left_posedge || sh_right_posedge;
   assign dir = sh_right_posedge ? 1 : 0;
+  ClockDivider #(500_000) clkdiv_for_shr (
+      .clk(clk),
+      .rst(rst),
+      .clk_out(clk_shr)
+  );
   ShiftRegisterBidirectional shift_reg20 (
-      .clk (clk),
+      .clk (clk_shr),
       .num (bcd),
       .load(load),
       .en  (en),
@@ -130,8 +131,11 @@ module Main (
       .anodes(anodes)
   );
 
-  always @(posedge clk or posedge rst_posedge) begin
-    if (start_posedge) start <= 1;
-    else if (rst_posedge) start <= 0;
-  end
+//  always @(posedge clk or posedge rst_posedge) begin
+//    if (start_posedge) start <= 1;
+//    else if (rst_posedge) start <= 0;
+//  end
+    always @(posedge start_posedge or posedge rst_posedge)
+        if (rst_posedge) start <= 0;
+        else if (start_posedge) start <= 1;
 endmodule

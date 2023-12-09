@@ -42,41 +42,37 @@ module testbench;
 
   initial begin
     clk = 0;
-    num1 = 8'b0;
-    num2 = 8'b0;
+    num1 = 8'b00000101;
+    num2 = 8'b00001010;
     start_btn = 1'b0;
     rst_btn = 1'b0;
     shift_right_btn = 1'b0;
     shift_left_btn = 1'b0;
+    
+    #100 
+    rst_btn = 1;
+    
+    #14000000
+    rst_btn = 0;
 
-    #10;
-    clk = 1;
-
-    #10;
+    #100;
     start_btn = 1;
 
-    #10;
+    #14000000;
     start_btn = 0;
 
-    #10;
+    #100;
     shift_right_btn = 1;
 
-    #10;
+    #14000000;
     shift_right_btn = 0;
 
-    #10;
-    clk = 0;  // Assuming a 50% duty cycle clock
-    #10;
-    clk = 1;
-    #10;
-    clk = 0;
-
     // Add more test cases as needed
-  $finish;
+    #100000000000000000
+    $finish;
   end
 
   always begin
     #1 clk = ~clk;
   end
-
 endmodule
