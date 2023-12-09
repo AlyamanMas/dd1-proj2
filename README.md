@@ -6,6 +6,6 @@ It stores a Verilog implementation of an 8x8 sequential multiplier with a 7-segm
 `Main.v` is the top-level Verilog module.
 
 # Team Members
-Adam Aberbach
-Alyaman Massarani
-Mohamed Khalil Brik
+- Adam Aberbach
+- Alyaman Massarani
+- Mohamed Khalil Brik
